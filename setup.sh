@@ -53,14 +53,14 @@ mysql -uroot mod < ~pause/pause/doc/mod.schema.txt
 mysqladmin -u root create authen_pause
 mysql -u root authen_pause < ~pause/pause/doc/authen_pause.schema.txt
 
-mysql -root mod -e "insert into users (userid) values ('$PAUSE_USER')"
+mysql -root mod -e "INSERT INTO USERS (userid) VALUES ('$PAUSE_USER')"
 
 PASS=$(perl -wle "print crypt '$PAUSE_PASS', chr(rand(26)+97).chr(rand(26)+97)")
 echo $PASS
 
-mysql -uroot authen_pause -e "insert into usertable (user,password) values ('$PAUSE_USER', '$PASS')"
+mysql -uroot authen_pause -e "INSERT INTO USERTABLE (user, password) VALUES ('$PAUSE_USER', '$PASS')"
 
-mysql -uroot authen_pause -e 'insert into grouptable (user,ugroup) values ("$PAUSE_USER", "admin")'
+mysql -uroot authen_pause -e "INSERT INTO GROUPTABLE (user, ugroup) VALUES ('$PAUSE_USER', 'admin')"
 
 mysql -uroot -e "CREATE USER pause IDENTIFIED BY 'pausepassword'"
 mysql -uroot -e "GRANT DELETE, INDEX, INSERT, SELECT, UPDATE, LOCK TABLES ON \`mod\`.* TO 'pause'@'%';"
