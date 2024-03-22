@@ -27,9 +27,9 @@ cd ~pause/pause
 cpanm -n --installdeps .
 
 # Set up pause config
-mkdir -p ../pause-private/lib
+mkdir -p ~pause/pause-private/lib
 
-cat << 'CONF' > ../pause-private/lib/PrivatePAUSE.pm
+cat << 'CONF' > ~pause/pause-private/lib/PrivatePAUSE.pm
 use strict;
 package PAUSE;
 
@@ -42,8 +42,29 @@ $Config->{MOD_DATA_SOURCE_USER}     = "pause";
 $Config->{MOD_DATA_SOURCE_PW}       = "pausepassword";
 $Config->{MAIL_MAILER}              = ["testfile"];
 $Config->{RUNDATA}                  = "/tmp/pause_1999";
-$Config->{TESTHOST_SCHEMA}          = "http";
+
+$Config->{CHECKSUMS_SIGNING_PROGRAM} = "does-not-exist";
+$Config->{GITROOT} = '/home/pause/pub/PAUSE/PAUSE-git';
+$Config->{MLROOT} = '/home/pause/pub/PAUSE/authors/id/';
+$Config->{ML_CHOWN_USER}  = 'unsafe';
+$Config->{ML_CHOWN_GROUP} = 'unsafe';
+$Config->{ML_MIN_FILES} = 1;
+$Config->{ML_MIN_INDEX_LINES} = 0;
+$Config->{PAUSE_LOG} = "/home/pause/log/paused.log";
+$Config->{PAUSE_LOG_DIR} = "/home/pause/log/";
+$Config->{PID_DIR} = "/home/pause/pid/";
+$Config->{TMP} = "/tmp/";
 CONF
 
-mkdir -p /tmp/pause_1999
+mkdir ~pause/log
+mkdir ~pause/pid
+mkdir -p ~pause/pub/PAUSE/authors/id
+mkdir -p ~pause/pub/PAUSE/modules
+mkdir -p ~pause/pub/PAUSE/PAUSE-git
 
+cd ~pause/pub/PAUSE/PAUSE-git
+git init
+git config --global user.email "pause@pause.perl.org"
+git config --global user.name "PAUSE Daemon"
+
+mkdir -p /tmp/pause_1999
