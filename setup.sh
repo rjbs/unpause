@@ -40,37 +40,18 @@ apt-get install mariadb-server libssl-dev zlib1g-dev \
  python3-certbot-nginx \
  git build-essential -y
 
-# install plenv so we can manage a local perl version
-git clone https://github.com/tokuhirom/plenv.git ~/.plenv
+# The --comment is here to suppress prompting for name, confirmation, etc.
+adduser pause  --disabled-password --comment 'PAUSE User'
+adduser unsafe --disabled-password --comment 'PAUSE Unsafe'
 
-echo 'export PATH="$HOME/.plenv/bin:$PATH"' >> ~/.bash_profile
-echo 'eval "$(plenv init -)"' >> ~/.bash_profile
-source ~/.bash_profile
-
-# install perl-build so we can build a new perl
-git clone https://github.com/tokuhirom/Perl-Build.git ~/.plenv/plugins/perl-build/
-
-plenv install 5.36.0 -j 8
-plenv global 5.36.0
-
-# install cpanm for perl dep management
-plenv install-cpanm
-
-git clone https://git@github.com/andk/pause/
-
-pushd pause
-
-# We need to pin these for now
-cpanm Mojolicious@8.72
-cpanm DBD::mysql@4.052
-cpanm --installdeps .
+sudo -u pause git clone https://git@github.com/andk/pause/ ~pause/pause
 
 # set up mysql databases and our pause user
 mysqladmin -uroot create mod
-mysql -uroot mod < doc/mod.schema.txt
+mysql -uroot mod < ~pause/pause/doc/mod.schema.txt
 
 mysqladmin -u root create authen_pause
-mysql -u root authen_pause < doc/authen_pause.schema.txt
+mysql -u root authen_pause < ~pause/pause/doc/authen_pause.schema.txt
 
 mysql -root mod -e "insert into users (userid) values ('$PAUSE_USER')"
 
@@ -80,27 +61,6 @@ echo $PASS
 mysql -uroot authen_pause -e "insert into usertable (user,password) values ('$PAUSE_USER', '$PASS')"
 
 mysql -uroot authen_pause -e 'insert into grouptable (user,ugroup) values ("$PAUSE_USER", "admin")'
-
-# Set up pause config
-mkdir -p ../pause-private/lib
-
-cat << 'CONF' > ../pause-private/lib/PrivatePAUSE.pm
-use strict;
-package PAUSE;
-
-$ENV{EMAIL_SENDER_TRANSPORT} = 'DevNull';
-
-our $Config;
-$Config->{AUTHEN_DATA_SOURCE_USER}  = "root";
-$Config->{AUTHEN_DATA_SOURCE_PW}    = "";
-$Config->{MOD_DATA_SOURCE_USER}     = "root";
-$Config->{MOD_DATA_SOURCE_PW}       = "secret";
-$Config->{MAIL_MAILER}              = ["testfile"];
-$Config->{RUNDATA}                  = "/tmp/pause_1999";
-$Config->{TESTHOST_SCHEMA}          = "http";
-CONF
-
-mkdir -p /tmp/pause_1999
 
 # Set up nginx conf
 cat << CONF > "/etc/nginx/sites-available/$PAUSE_HOST"
@@ -136,6 +96,10 @@ ln -s "/etc/nginx/sites-available/$PAUSE_HOST" "/etc/nginx/sites-enabled/$PAUSE_
 # Install ssl cert
 sudo certbot --nginx -d $PAUSE_HOST
 
-echo "now run 'plackup -I ../pause-private/lib' from the pause dir and then check out https://$PAUSE_HOST"
+cp setup-unpriv.sh ~pause
+chown pause:pause ~pause/setup-unpriv.sh
+chmod u+x ~pause/setup-unpriv.sh
+sudo -u pause /home/pause/setup-unpriv.sh
 
+echo "now run '~pause/.plenv/versions/5.36.0/bin/plackup -I ../pause-private/lib' from ~pause/pause and then check out https://$PAUSE_HOST"
 
