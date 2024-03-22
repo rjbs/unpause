@@ -36,10 +36,10 @@ package PAUSE;
 $ENV{EMAIL_SENDER_TRANSPORT} = 'DevNull';
 
 our $Config;
-$Config->{AUTHEN_DATA_SOURCE_USER}  = "root";
-$Config->{AUTHEN_DATA_SOURCE_PW}    = "";
-$Config->{MOD_DATA_SOURCE_USER}     = "root";
-$Config->{MOD_DATA_SOURCE_PW}       = "secret";
+$Config->{AUTHEN_DATA_SOURCE_USER}  = "pause";
+$Config->{AUTHEN_DATA_SOURCE_PW}    = "pausepassword";
+$Config->{MOD_DATA_SOURCE_USER}     = "pause";
+$Config->{MOD_DATA_SOURCE_PW}       = "pausepassword";
 $Config->{MAIL_MAILER}              = ["testfile"];
 $Config->{RUNDATA}                  = "/tmp/pause_1999";
 $Config->{TESTHOST_SCHEMA}          = "http";

@@ -62,6 +62,10 @@ mysql -uroot authen_pause -e "insert into usertable (user,password) values ('$PA
 
 mysql -uroot authen_pause -e 'insert into grouptable (user,ugroup) values ("$PAUSE_USER", "admin")'
 
+mysql -uroot -e "CREATE USER pause IDENTIFIED BY 'pausepassword'"
+mysql -uroot -e "GRANT DELETE, INDEX, INSERT, SELECT, UPDATE, LOCK TABLES ON \`mod\`.* TO 'pause'@'%';"
+mysql -uroot -e "GRANT DELETE, INDEX, INSERT, SELECT, UPDATE, LOCK TABLES ON \`authen_pause\`.* TO 'pause'@'%';"
+
 # Set up nginx conf
 cat << CONF > "/etc/nginx/sites-available/$PAUSE_HOST"
 upstream pause {
