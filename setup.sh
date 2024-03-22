@@ -98,7 +98,7 @@ rm /etc/nginx/sites-enabled/default
 ln -s "/etc/nginx/sites-available/$PAUSE_HOST" "/etc/nginx/sites-enabled/$PAUSE_HOST"
 
 # Install ssl cert
-sudo certbot --nginx -d $PAUSE_HOST
+sudo certbot --nginx -d $PAUSE_HOST --agree-tos -n --email pause@pause.perl.org
 
 cp setup-unpriv.sh ~pause
 chown pause:pause ~pause/setup-unpriv.sh
