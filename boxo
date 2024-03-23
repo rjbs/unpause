@@ -1,0 +1,116 @@
+#!/usr/bin/env perl
+use v5.36.0;
+
+use lib '/Users/rjbs/fm/code/Synergy/lib';
+
+use Dobby::Client;
+use Future::AsyncAwait;
+use Getopt::Long::Descriptive;
+use IO::Async::Loop;
+use Log::Dispatchouli;
+
+my ($opt, $usage) = describe_options(
+  '%c %o',
+  [ 'box-ident|i=s', "identifying part of box name; defaults to $ENV{USER}",
+                      { default => $ENV{USER} // die 'no USER env var!' } ],
+);
+
+my $Logger = Log::Dispatchouli->new({
+  facility  => undef,
+  ident     => 'unpause-boxo',
+  log_pid   => 0,
+  to_stdout => 1,
+});
+
+my $loop = IO::Async::Loop->new;
+
+my $TOKEN = $ENV{DO_TOKEN} // die "no token, no milk\n";
+
+my $dobby = Dobby::Client->new(
+  bearer_token => $TOKEN,
+);
+
+$loop->add($dobby);
+
+my $boxname    = $opt->box_ident . ".unpause";
+my $project_id = q{62113225-81be-4538-8408-f42f54f6c93f}; # PAUSE 2024
+
+{
+  my @droplets = await $dobby->get_droplets_with_tag('unpause');
+  my ($droplet) = grep {; $_->{name} eq $boxname } @droplets;
+
+  if ($droplet) {
+    die "box already exists\n";
+  }
+}
+
+my @key_ids;
+{
+  my %want_key = map {; $_ => 1 } qw( matthew rjbs );
+  my $keys = await $dobby->json_get_pages_of("/account/keys", 'ssh_keys');
+
+  my (@keys) = grep {; $want_key{$_->{name}} } @$keys;
+
+  unless (@keys) {
+    die "can't find ssh keys to use!\n";
+  }
+
+  @key_ids = map {; $_->{id} } @keys;
+}
+
+my $image  = 'debian-12-x64';
+my $region = 'nyc3';
+my $size = 'g-2vcpu-8gb';
+
+my %droplet_create_args = (
+  name     => $boxname,
+  image    => $image,
+  region   => $region,
+  size     => $size,
+  ssh_keys => \@key_ids,
+  tags     => [ 'unpause' ],
+);
+
+$Logger->log([ "Creating droplet: %s", \%droplet_create_args ]);
+
+my $droplet = await $dobby->create_droplet(\%droplet_create_args);
+
+unless ($droplet) {
+  die "There was an error creating the box. Try again.\n";
+}
+
+# At this point, the box exists, but isn't quite up.  The above result, for
+# example, has no networks entry.  We need to re-get it.
+$Logger->log([ "Created droplet %i, now waiting for network...", $droplet->{id} ]);
+
+# We delay this because a completed droplet sometimes does not show up in GET
+# /droplets immediately, which causes annoying problems.  Waiting is a
+# silly fix, but seems to work, and it's not like box creation is
+# lightning-fast anyway.
+await $loop->delay_future(after => 5);
+
+{
+  my $payload = await $dobby->json_get("/droplets/$droplet->{id}");
+  $droplet = $payload->{droplet};
+}
+
+unless ($droplet) {
+  die "Box was created, but now I can't find it! Check the DigitalOcean console and maybe try again.\n";
+}
+
+my ($ip_addr) = map { $_->{ip_address} } grep { $_->{type} eq 'public'}
+                   $droplet->{networks}{v4}->@*;
+
+$Logger->log([ "Droplet is now up on %s...", $ip_addr ]);
+
+await $dobby->add_droplet_to_project($droplet->{id}, $project_id);
+
+$Logger->log("updating DNS names for $boxname");
+
+await $dobby->point_domain_record_at_ip(
+  "fastmail.dev",
+  "$boxname",
+  $ip_addr,
+);
+
+$Logger->log("Your box is now available as $boxname.fastmail.dev");
