@@ -29,7 +29,11 @@ die "no --pass given\n" unless length $admin_pass;
 
 $admin_user = uc $admin_user;
 
-# install system deps
+# Install system deps:
+#
+# Note that rjbs has been somewhat obnoxiously clever, below.  Here, we install
+# libpath-tiny-perl.  That's Path::Tiny.  Later in this very program, we will
+# load and use this module.  What a yutz. -- rjbs, 2024-03-23
 my @required_debs = qw(
  build-essential
  certbot
@@ -37,6 +41,7 @@ my @required_debs = qw(
  git
  libdb-dev
  libexpat1-dev
+ libpath-tiny-perl
  libssl-dev
  mariadb-server
  nginx
@@ -92,7 +97,6 @@ run_cmd(
 
 my $nginx_config = <<~"END";
 # Set up nginx conf
-cat << CONF > "/etc/nginx/sites-available/$hostname"
 upstream pause {
     server 127.0.0.1:5000;
 }
@@ -119,8 +123,12 @@ server {
 }
 END
 
-run_cmd(qw(rm /etc/nginx/sites-enabled/default));
-run_cmd('ln', '-s', "/etc/nginx/sites-available/$hostname","/etc/nginx/sites-enabled/$hostname");
+require Path::Tiny;
+Path::Tiny::path("/etc/nginx/sites-available/$hostname")->spew($nginx_config);
+
+unlink('/etc/nginx/sites-enabled/default');
+symlink("/etc/nginx/sites-available/$hostname", "/etc/nginx/sites-enabled/$hostname")
+  or die "can't symlink nginx conf: $!";
 
 # Install ssl cert
 run_cmd(
