@@ -141,7 +141,17 @@ async sub do_create {
     $ip_addr,
   );
 
-  $Logger->log("Your box is now available as $boxname.$domain");
+  $Logger->log("Waiting for ssh to become available...");
+
+  my $ssh_up = await wait_for_port($ip_addr, 22);
+
+  unless ($ssh_up) {
+    $Logger->log("The droplet was created, but ssh didn't come up.  Your turn!");
+    exit 1;
+  }
+
+  $Logger->log("ssh is now available to $boxname.$domain ($ip_addr)");
+
   $Logger->log("Now turning the box into a PAUSE server...");
 
   system(
@@ -193,4 +203,43 @@ async sub do_destroy {
   await $dobby->destroy_droplet($droplet->{id});
 
   $Logger->log([ "Destroyed droplet: %s", $droplet->{id} ]);
+}
+
+async sub wait_for_port ($ip_addr, $port) {
+  my $max_tries = 20;
+  TRY: for my $try (1..$max_tries) {
+    my $socket;
+    eval {
+      $socket = await $loop->connect(addr => {
+        family   => 'inet',
+        socktype => 'stream',
+        port     => 22,
+        ip       => $ip_addr,
+      });
+    };
+
+    if ($socket) {
+      # We didn't need the connection, just to know it worked!
+      return 1;
+    }
+
+    my $error = $@;
+    if ($error !~ /Connection refused/) {
+      $Logger->log([
+        "weird error connecting to %s:22: %s",
+        $ip_addr,
+        $error,
+      ]);
+    }
+
+    $Logger->log([
+      "ssh on %s is not up, maybe wait and try again; %s tries remain",
+      $ip_addr,
+      $max_tries - $try,
+    ]);
+
+    await $loop->delay_future(after => 1);
+  }
+
+  return;
 }
