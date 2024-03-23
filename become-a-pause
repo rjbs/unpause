@@ -1,0 +1,136 @@
+#!/usr/bin/perl
+use v5.36.0;
+use warnings;
+
+use Carp qw(croak);
+use Getopt::Long;
+
+sub run_cmd (@args) {
+  system {$args[0]} @args;
+
+  croak "failed to run $args[0]" if $?;
+}
+
+sub run_sh ($str) {
+  system $str;
+
+  croak "failed to run shell command" if $?;
+}
+
+GetOptions(
+  "host=s", \my $hostname,
+  "user=s", \my $admin_user,
+  "pass=s", \my $admin_pass,
+);
+
+die "no --host given\n" unless length $hostname;
+die "no --user given\n" unless length $admin_user;
+die "no --pass given\n" unless length $admin_pass;
+
+$admin_user = uc $admin_user;
+
+# install system deps
+my @required_debs = qw(
+ build-essential
+ certbot
+ default-libmysqlclient-dev
+ git
+ libdb-dev
+ libexpat1-dev
+ libssl-dev
+ mariadb-server
+ nginx
+ python3-certbot-nginx
+ zlib1g-dev
+);
+
+run_cmd('apt', 'install', '-y', @required_debs);
+
+# The --comment is here to suppress prompting for name, confirmation, etc.
+run_cmd(qw(adduser pause  --disabled-password --comment), 'PAUSE User');
+run_cmd(qw(adduser unsafe --disabled-password --comment), 'PAUSE Unsafe');
+
+run_cmd(qw(
+  sudo -u pause git clone https://git@github.com/andk/pause/ /home/pause/pause
+));
+
+# set up mysql databases and our pause user
+run_cmd(qw(mysqladmin -uroot create mod));
+run_sh('mysql -uroot mod < ~pause/pause/doc/mod.schema.txt');
+
+run_cmd(qw(mysqladmin -u root create authen_pause));
+run_sh('mysql -u root authen_pause < ~pause/pause/doc/authen_pause.schema.txt');
+
+run_cmd(qw(mysql -root mod -e), "INSERT INTO users (userid) VALUES ('$admin_user')");
+
+my $crypted_pass = crypt $admin_pass, chr(rand(26)+97) . chr(rand(26)+97);
+
+run_cmd(
+  qw(mysql -uroot authen_pause -e),
+  "INSERT INTO usertable (user, password) VALUES ('$admin_user', '$admin_pass')",
+);
+
+run_cmd(
+  qw(mysql -uroot authen_pause -e),
+  "INSERT INTO grouptable (user, ugroup) VALUES ('$admin_user', 'admin')",
+);
+
+run_cmd(
+  qw(mysql -uroot -e),
+  "CREATE USER pause IDENTIFIED BY 'pausepassword'",
+);
+
+run_cmd(
+  qw(mysql -uroot -e),
+  "GRANT DELETE, INDEX, INSERT, SELECT, UPDATE, LOCK TABLES ON `mod`.* TO 'pause'@'%';",
+);
+
+run_cmd(
+  qw(mysql -uroot -e),
+  "GRANT DELETE, INDEX, INSERT, SELECT, UPDATE, LOCK TABLES ON `authen_pause`.* TO 'pause'@'%';",
+);
+
+my $nginx_config = <<~"END";
+# Set up nginx conf
+cat << CONF > "/etc/nginx/sites-available/$hostname"
+upstream pause {
+    server 127.0.0.1:5000;
+}
+
+server {
+  listen 80 default_server;
+
+  location / {
+     proxy_pass http://pause;
+     proxy_set_header X-Forwarded-Host \$host;
+     proxy_set_header X-Forwarded-Server \$host;
+     proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+     proxy_set_header X-Forwarded-Proto \$scheme;
+
+     proxy_pass_request_headers on;
+     proxy_no_cache \$cookie_nocache  \$arg_nocache\$arg_comment;
+     proxy_no_cache \$http_pragma     \$http_authorization;
+     proxy_cache_bypass \$cookie_nocache \$arg_nocache \$arg_comment;
+     proxy_cache_bypass \$http_pragma \$http_authorization;
+     proxy_pass_header Authorization;
+  }
+
+  server_name $hostname;
+}
+END
+
+run_cmd(qw(rm /etc/nginx/sites-enabled/default));
+run_cmd('ln', '-s', "/etc/nginx/sites-available/$hostname","/etc/nginx/sites-enabled/$hostname");
+
+# Install ssl cert
+run_cmd(
+  qw(sudo certbot --nginx -d),
+  $hostname,
+  qw(--agree-tos -n --email pause@pause.perl.org),
+);
+
+run_cmd(qw( cp setup-unpriv.sh /home/pause ));
+run_cmd(qw( chown pause:pause /home/pause/setup-unpriv.sh ));
+run_cmd(qw( chmod u+x /home/pause/setup-unpriv.sh ));
+run_cmd(qw( sudo -u pause /home/pause/setup-unpriv.sh ));
+
