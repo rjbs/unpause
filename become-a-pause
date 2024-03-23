@@ -61,39 +61,39 @@ run_cmd(qw(
 ));
 
 # set up mysql databases and our pause user
-run_cmd(qw(mysqladmin -uroot create mod));
-run_sh('mysql -uroot mod < ~pause/pause/doc/mod.schema.txt');
+run_cmd(qw(mysqladmin CREATE mod));
+run_sh('mysql mod < ~pause/pause/doc/mod.schema.txt');
 
-run_cmd(qw(mysqladmin -u root create authen_pause));
+run_cmd(qw(mysqladmin CREATE authen_pause));
 run_sh('mysql -u root authen_pause < ~pause/pause/doc/authen_pause.schema.txt');
 
-run_cmd(qw(mysql -root mod -e), "INSERT INTO users (userid) VALUES ('$admin_user')");
+run_cmd(qw(mysql mod -e), "INSERT INTO users (userid) VALUES ('$admin_user')");
 
 my $crypted_pass = crypt $admin_pass, chr(rand(26)+97) . chr(rand(26)+97);
 
 run_cmd(
-  qw(mysql -uroot authen_pause -e),
+  qw(mysql authen_pause -e),
   "INSERT INTO usertable (user, password) VALUES ('$admin_user', '$admin_pass')",
 );
 
 run_cmd(
-  qw(mysql -uroot authen_pause -e),
+  qw(mysql authen_pause -e),
   "INSERT INTO grouptable (user, ugroup) VALUES ('$admin_user', 'admin')",
 );
 
 run_cmd(
-  qw(mysql -uroot -e),
-  "CREATE USER pause IDENTIFIED BY 'pausepassword'",
+  qw(mysql -e),
+  q{CREATE USER pause IDENTIFIED BY 'pausepassword'},
 );
 
 run_cmd(
-  qw(mysql -uroot -e),
-  "GRANT DELETE, INDEX, INSERT, SELECT, UPDATE, LOCK TABLES ON `mod`.* TO 'pause'@'%';",
+  qw(mysql -e),
+  q{GRANT DELETE, INDEX, INSERT, SELECT, UPDATE, LOCK TABLES ON `mod`.* TO 'pause'@'%';},
 );
 
 run_cmd(
-  qw(mysql -uroot -e),
-  "GRANT DELETE, INDEX, INSERT, SELECT, UPDATE, LOCK TABLES ON `authen_pause`.* TO 'pause'@'%';",
+  qw(mysql -e),
+  q{GRANT DELETE, INDEX, INSERT, SELECT, UPDATE, LOCK TABLES ON `authen_pause`.* TO 'pause'@'%';},
 );
 
 my $nginx_config = <<~"END";
