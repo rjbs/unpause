@@ -11,8 +11,9 @@ use Log::Dispatchouli;
 
 my ($opt, $usage) = describe_options(
   '%c %o',
-  [ 'box-ident|i=s', "identifying part of box name; defaults to $ENV{USER}",
+  [ 'username|u=s',   "your username; defaults to $ENV{USER}",
                       { default => $ENV{USER} // die 'no USER env var!' } ],
+  [ 'box-ident|i=s',  "identifying part of box name; defaults to --username" ],
   [],
   [ 'mode', 'hidden' => {
       default => 'create',
@@ -42,7 +43,8 @@ my $dobby = Dobby::Client->new(
 $loop->add($dobby);
 
 my $domain     = "fastmail.dev";
-my $boxname    = $opt->box_ident . ".unpause";
+my $username   = $opt->username;
+my $boxname    = ($opt->box_ident // $username) . ".unpause";
 my $project_id = q{62113225-81be-4538-8408-f42f54f6c93f}; # PAUSE 2024
 
 my $todo = __PACKAGE__->can("do_" . $opt->mode);
@@ -140,6 +142,35 @@ async sub do_create {
   );
 
   $Logger->log("Your box is now available as $boxname.$domain");
+  $Logger->log("Now turning the box into a PAUSE server...");
+
+  system(
+    qw(
+      scp
+        -o UserKnownHostsFile=/dev/null
+        -o UpdateHostKeys=no
+        -o StrictHostKeyChecking=no
+
+        become-a-pause
+    ),
+    "root\@$ip_addr:",
+  );
+
+  system(
+    qw(
+      ssh
+        -o UserKnownHostsFile=/dev/null
+        -o UpdateHostKeys=no
+        -o StrictHostKeyChecking=no
+
+        -l root
+    ),
+    $ip_addr,
+    qw( perl become-a-pause ),
+      '--host', "$boxname.$domain",
+      '--user', $username,
+      '--pass', $username, # XXX: Do something better later.
+  );
 }
 
 async sub do_destroy {
@@ -163,4 +194,3 @@ async sub do_destroy {
 
   $Logger->log([ "Destroyed droplet: %s", $droplet->{id} ]);
 }
-
