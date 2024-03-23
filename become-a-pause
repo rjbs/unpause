@@ -49,7 +49,8 @@ my @required_debs = qw(
  zlib1g-dev
 );
 
-run_cmd('apt', 'install', '-y', @required_debs);
+run_cmd('apt-get', 'update');
+run_cmd('apt-get', 'install', '-y', @required_debs);
 
 # The --comment is here to suppress prompting for name, confirmation, etc.
 run_cmd(qw(adduser pause  --disabled-password --comment), 'PAUSE User');
