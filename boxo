@@ -161,7 +161,7 @@ async sub do_create {
         -o UpdateHostKeys=no
         -o StrictHostKeyChecking=no
 
-        become-a-pause
+        run-on-vm/become-a-pause
     ),
     "root\@$ip_addr:",
   );
