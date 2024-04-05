@@ -146,6 +146,8 @@ run_cmd(qw( chown pause:pause ), $unpriv_file);
 run_cmd(qw( chmod u+x ), $unpriv_file);
 run_cmd(qw( sudo -u pause ), $unpriv_file);
 
+path("/home/pause/pause/cron/CRONTAB.ROOT")->copy("/etc/cron.d/pause");
+
 __DATA__
 #!/usr/bin/bash
 set -e
