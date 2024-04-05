@@ -60,6 +60,7 @@ my @required_debs = qw(
  mariadb-server
  nginx
  python3-certbot-nginx
+ unzip
  zlib1g-dev
 );
 
