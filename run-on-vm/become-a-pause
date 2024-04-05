@@ -146,16 +146,16 @@ run_cmd(qw( chown pause:pause ), $unpriv_file);
 run_cmd(qw( chmod u+x ), $unpriv_file);
 run_cmd(qw( sudo -u pause ), $unpriv_file);
 
-path("/home/pause/pause/cron/CRONTAB.ROOT")->copy("/etc/cron.d/pause");
+Path::Tiny::path("/home/pause/pause/cron/CRONTAB.ROOT")->copy("/etc/cron.d/pause");
 
-path("/home/pause/pause/services/paused.service")
-  ->copy("/etc/systemd/system/paused.service");
+for my $service (qw( paused pause-web )) {
+  Path::Tiny::path("/home/pause/pause/services/$service.service")
+    ->copy("/etc/systemd/system/$service.service");
 
-run_cmd(qw( systemctl enable paused ));
-
-run_cmd(qw( systemctl start paused ));
-
-run_cmd(qw( systemctl status paused ));
+  run_cmd(qw( systemctl enable ), $service );
+  run_cmd(qw( systemctl start  ), $service );
+  run_cmd(qw( systemctl status ), $service );
+}
 
 __DATA__
 #!/usr/bin/bash
