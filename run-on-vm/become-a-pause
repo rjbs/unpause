@@ -57,7 +57,7 @@ run_cmd(qw(adduser pause  --disabled-password --comment), 'PAUSE User');
 run_cmd(qw(adduser unsafe --disabled-password --comment), 'PAUSE Unsafe');
 
 run_cmd(qw(
-  sudo -u pause git clone https://git@github.com/andk/pause/ /home/pause/pause
+  sudo -u pause git clone -b unpause https://git@github.com/rjbs/pause/ /home/pause/pause
 ));
 
 # set up mysql databases and our pause user
