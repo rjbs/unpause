@@ -29,6 +29,20 @@ die "no --pass given\n" unless length $admin_pass;
 
 $admin_user = uc $admin_user;
 
+# On DigitalOcean, the journal won't be journaling at startup.  Why?  Well, I
+# want to swear and say "because systemd!" but there seems to be an interesting
+# reason, related to the machine id being baked into the image and then not
+# matching that on the new cloud instance.  I don't quite follow it.
+#
+# References:
+# * https://unix.stackexchange.com/a/538881
+# * https://serverfault.com/a/1058260
+#
+# Since we won't (??) be using DO for this in real work, I'm not trying to
+# really fix it, I just want it logging before we start doing work.  This will
+# do the trick:
+run_cmd(qw( systemctl restart systemd-journald.service ));
+
 # Install system deps:
 #
 # Note that rjbs has been somewhat obnoxiously clever, below.  Here, we install
