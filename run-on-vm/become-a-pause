@@ -80,7 +80,7 @@ my $crypted_pass = crypt $admin_pass, chr(rand(26)+97) . chr(rand(26)+97);
 
 run_cmd(
   qw(mysql authen_pause -e),
-  "INSERT INTO usertable (user, password) VALUES ('$admin_user', '$admin_pass')",
+  "INSERT INTO usertable (user, password) VALUES ('$admin_user', '$crypted_pass')",
 );
 
 run_cmd(
