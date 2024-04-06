@@ -151,6 +151,37 @@ run_cmd(
   # qw( --server https://acme-staging-v02.api.letsencrypt.org/directory ),
 );
 
+Path::Tiny::path("/etc/rsyncd.conf")->spew(<<~'END');
+  # cat rsyncd.conf
+  max connections = 12
+  log file = /var/log/rsyncd
+  pid file = /var/run/PAUSE-rsyncd.pid
+  transfer logging = true
+  use chroot = true
+  timeout = 600
+
+  [PAUSE]
+  path = /home/pause/pub/PAUSE
+
+  [authors]
+  path = /home/pause/pub/PAUSE/authors
+
+  [modules]
+  path = /home/pause/pub/PAUSE/modules
+
+  [scripts]
+  path = /home/pause/pub/PAUSE/scripts/new
+
+  [pausedata]
+  path = /home/pause/pub/PAUSE/PAUSE-data
+
+  [pausecode]
+  path = /home/pause/pub/PAUSE/PAUSE-code
+
+  [pausegit]
+  path = /home/pause/pub/PAUSE/PAUSE-git
+  END
+
 run_cmd(qw( sudo -u pause ), "/home/pause/pause/bootstrap/selfconfig");
 
 Path::Tiny::path("/home/pause/pause/cron/CRONTAB.ROOT")->copy("/etc/cron.d/pause");
