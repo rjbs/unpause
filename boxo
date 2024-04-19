@@ -89,7 +89,7 @@ async sub do_create {
 
   my $image  = 'debian-12-x64';
   my $region = 'nyc3';
-  my $size = 'g-2vcpu-8gb';
+  my $size = 'g-4vcpu-16gb';
 
   my %droplet_create_args = (
     name     => $boxname,
