@@ -13,7 +13,11 @@ my ($opt, $usage) = describe_options(
   '%c %o',
   [ 'username|u=s',   "your username; defaults to $ENV{USER}",
                       { default => $ENV{USER} // die 'no USER env var!' } ],
+
+  # For serious business, we like c-16. -- rjbs, 2024-04-19
+  [ 'size=s',         "slug for Digital Ocean droplet", { default => 'g-4vcpu-16gb' } ],
   [ 'box-ident|i=s',  "identifying part of box name; defaults to --username" ],
+
   [],
   [ 'mode', 'hidden' => {
       default => 'create',
@@ -89,7 +93,7 @@ async sub do_create {
 
   my $image  = 'debian-12-x64';
   my $region = 'nyc3';
-  my $size = 'g-4vcpu-16gb';
+  my $size   = $opt->size;
 
   my %droplet_create_args = (
     name     => $boxname,
