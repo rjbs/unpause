@@ -43,8 +43,7 @@ my @required_debs = qw(
  zlib1g-dev
 );
 
-run_cmd('apt-get', 'update');
-run_cmd('apt-get', 'install', '-y', @required_debs);
+run_cmd(qw(apt-get install -y), @required_debs);
 
 require Getopt::Long::Descriptive;
 

@@ -17,6 +17,8 @@ my ($opt, $usage) = describe_options(
   # For serious business, we like c-16. -- rjbs, 2024-04-19
   [ 'size=s',         "slug for Digital Ocean droplet", { default => 'g-4vcpu-16gb' } ],
   [ 'box-ident|i=s',  "identifying part of box name; defaults to --username" ],
+  [],
+  [ 'plenv-file|P=s', "a tar.bz2 file to use for plenv (it's a shortcut)" ],
 
   [],
   [ 'mode', 'hidden' => {
@@ -35,6 +37,14 @@ my $Logger = Log::Dispatchouli->new({
   log_pid   => 0,
   to_stdout => 1,
 });
+
+if ($opt->plenv_file) {
+  die "plenv file does not exist" unless -e $opt->plenv_file;
+  die "plenv file can't be read"  unless -r $opt->plenv_file;
+
+  die "plenv file should be a .tar.bz2 file"
+    unless $opt->plenv_file =~ /\.tar\.bz2\z/;
+}
 
 my $loop = IO::Async::Loop->new;
 
@@ -155,6 +165,36 @@ async sub do_create {
   }
 
   $Logger->log("ssh is now available to $boxname.$domain ($ip_addr)");
+
+  system(
+    qw(
+      /usr/bin/ssh
+        -o UserKnownHostsFile=/dev/null
+        -o UpdateHostKeys=no
+        -o StrictHostKeyChecking=no
+    ),
+
+    "root\@$ip_addr",
+
+    qw( /usr/bin/apt-get update ),
+  );
+
+  if ($opt->plenv_file) {
+    $Logger->log("Copying plenv install tarball to destination...");
+
+    system(
+      qw(
+        scp
+          -o UserKnownHostsFile=/dev/null
+          -o UpdateHostKeys=no
+          -o StrictHostKeyChecking=no
+      ),
+      $opt->plenv_file,
+
+      "root\@$ip_addr:/tmp/plenv-tarball.tar.bz2",
+    );
+  }
+
 
   $Logger->log("Now turning the box into a PAUSE server...");
 
