@@ -18,6 +18,23 @@ use Carp qw(croak);
 # do the trick:
 run_cmd(qw( systemctl restart systemd-journald.service ));
 
+# Don't run apt-get update if apt is already busy. We need to wait or we'll
+# fail to update. Also wait for /var/lib/dpkg/lock-frontend
+for my $try (1..30) {
+  system(
+    "fuser /var/lib/apt/lists/lock >/dev/null 2>/dev/null"
+  );
+
+  my $exit = $? >> 8;
+  last if $exit;
+
+  warn "apt running, waiting 1s, try $try/30\n";
+
+  sleep 1;
+}
+
+run_cmd(qw(apt-get -o DPkg::Lock::Timeout=60 update));
+
 # Install system deps:
 #
 # Note that rjbs has been somewhat obnoxiously clever, below.  Here, we install
@@ -43,7 +60,7 @@ my @required_debs = qw(
  zlib1g-dev
 );
 
-run_cmd(qw(apt-get install -y), @required_debs);
+run_cmd(qw(apt-get -o DPkg::Lock::Timeout=60 install -y), @required_debs);
 
 require Getopt::Long::Descriptive;
 
