@@ -61,6 +61,7 @@ my @required_debs = qw(
  python3-certbot-nginx
  unzip
  zlib1g-dev
+ libsasl2-modules
 );
 
 run_cmd(qw(apt-get -o DPkg::Lock::Timeout=60 install -y), @required_debs);
@@ -73,7 +74,25 @@ my ($opt, $usage) = Getopt::Long::Descriptive::describe_options(
   [ "user=s", "username for PAUSE admin to create",       { required => 1 } ],
   [ "pass=s", "password for PAUSE admin to create",       { required => 1 } ],
   [ "enable-mail|m", "enable working postfix config",                       ],
+  [ 'relay-host=s',   "relay host for smtp" ],
+  [ 'relay-port=s',   "relay port for smtp" ],
+  [ 'relay-username=s', "relay sasl username for smtp" ],
+  [ 'relay-password=s', "relay sasl password for smtp" ],
 );
+
+my @mopts = qw(relay_host relay_port relay_username relay_password);
+
+if ($opt->enable_mail) {
+  my @m;
+
+  for my $setting (@mopts) {
+    push @m, $setting unless $opt->$setting;
+  }
+
+  $_ =~ s/_/-/g for @m;
+
+  die "--enable-mail requires @m\n" if @m;
+}
 
 my $hostname   = $opt->host;
 my $admin_user = uc $opt->user;
@@ -259,13 +278,37 @@ if ($opt->enable_mail) {
 
   my $cf = Path::Tiny::path("/home/pause/pause/etc/puppet/modules/pause/files/etc/postfix/main.cf-pause-us");
 
-  my $data = $cf->slurp_raw;
-  $data =~ s{daemon_directory = /usr/libexec/postfix}{daemon_directory = /usr/lib/postfix/sbin}
+  my $maincf = $cf->slurp_raw;
+  $maincf =~ s{daemon_directory = /usr/libexec/postfix}{daemon_directory = /usr/lib/postfix/sbin}
     or warn "!!! Failed to replace daemon_directory !!!\n\n";
-  $data =~ s{inet_interfaces = all}{inet_interfaces = localhost}
+  $maincf =~ s{inet_interfaces = all}{inet_interfaces = localhost}
     or warn "!!! Failed to replace inet_interfaces !!!\n\n";
 
-  Path::Tiny::path("/etc/postfix/main.cf")->spew_raw($data);
+  my $relayhost = $opt->relay_host;
+  my $relayport = $opt->relay_port;
+
+  $maincf .= <<~EOF;
+    relayhost = [$relayhost]:$relayport
+
+    smtp_sasl_auth_enable = yes
+    smtp_sasl_password_maps = hash:/etc/postfix/sasl_passwd
+    smtp_sasl_security_options =
+    smtp_tls_CAfile = /etc/ssl/certs/ca-certificates.crt
+    smtp_use_tls = yes
+    smtp_tls_wrappermode = yes
+    smtp_tls_security_level = encrypt
+    EOF
+
+  Path::Tiny::path("/etc/postfix/main.cf")->spew_raw($maincf);
+
+  my ($user, $pass) = ($opt->relay_username, $opt->relay_password);
+
+  Path::Tiny::path("/etc/postfix/sasl_passwd")->spew_raw(<<~EOF);
+    [$relayhost]:$relayport $user:$pass
+    EOF
+
+  run_cmd(qw(chmod 600 /etc/postfix/sasl_passwd));
+  run_cmd(qw(postmap /etc/postfix/sasl_passwd));
 
   run_cmd(qw( postfix stop ));
   run_cmd(qw( postfix start ));
