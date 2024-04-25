@@ -173,6 +173,8 @@ async sub do_create {
 
   $Logger->log("ssh is now available to $boxname.$domain ($ip_addr)");
 
+  sleep 1;
+
   if ($opt->plenv_file) {
     $Logger->log("Copying plenv install tarball to destination...");
 
@@ -198,7 +200,7 @@ async sub do_create {
         -o UserKnownHostsFile=/dev/null
         -o UpdateHostKeys=no
         -o StrictHostKeyChecking=no
-        run-on-vm/postfix
+        run-on-vm/become-a-pause
     ),
     "root\@$ip_addr:",
   );
