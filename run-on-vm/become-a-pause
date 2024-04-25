@@ -219,6 +219,12 @@ for my $service (qw( paused pause-web )) {
   run_cmd(qw( systemctl status ), $service );
 }
 
+for my $service (qw( rsync )) {
+  run_cmd(qw( systemctl enable ), $service );
+  run_cmd(qw( systemctl start  ), $service );
+  run_cmd(qw( systemctl status ), $service );
+}
+
 ## SUBROUTINES GO DOWN BELOW
 ## THAT'S WHY THEY'RE CALLED SUBROUTINES
 
