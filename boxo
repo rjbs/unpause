@@ -19,6 +19,8 @@ my ($opt, $usage) = describe_options(
   [ 'box-ident|i=s',  "identifying part of box name; defaults to --username" ],
   [],
   [ 'plenv-file|P=s', "a tar.bz2 file to use for plenv (it's a shortcut)" ],
+  [],
+  [ 'certbot-staging|C', 'use the staging version of certbot' ],
 
   [],
   [ 'mode', 'hidden' => {
@@ -217,6 +219,7 @@ async sub do_create {
       '--host', "$boxname.$domain",
       '--user', $username,
       '--pass', $username, # XXX: Do something better later.
+      ($opt->certbot_staging ? '--certbot-staging' : ()),
   );
 
   $Logger->log(<<~EOF);

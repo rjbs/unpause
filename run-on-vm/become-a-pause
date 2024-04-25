@@ -72,6 +72,8 @@ my ($opt, $usage) = Getopt::Long::Descriptive::describe_options(
   [ "host=s", "the hostname being used for this install", { required => 1 } ],
   [ "user=s", "username for PAUSE admin to create",       { required => 1 } ],
   [ "pass=s", "password for PAUSE admin to create",       { required => 1 } ],
+  [],
+  [ 'certbot-staging|C', 'use the staging version of certbot' ],
 );
 
 my $hostname   = $opt->host;
@@ -195,10 +197,10 @@ run_cmd(
   qw(--agree-tos -n --email pause@pause.perl.org),
 
   # This will use the staging server, which can be used to make lots more
-  # certificates that usual, but they aren't trusted.  When needed, this can be
-  # commented out, or we can add a --switch.
-  #
-  # qw( --server https://acme-staging-v02.api.letsencrypt.org/directory ),
+  # certificates that usual, but they aren't trusted.
+  ($opt->certbot_staging
+    ? ( qw( --server https://acme-staging-v02.api.letsencrypt.org/directory ) )
+    : ()),
 );
 
 Path::Tiny::path("/etc/rsyncd.conf")->spew(<<~'END');
