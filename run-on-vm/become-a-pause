@@ -107,24 +107,50 @@ run_cmd(
   "INSERT INTO grouptable (user, ugroup) VALUES ('$admin_user', 'admin')",
 );
 
+my %db_password_for = (
+  authuser  => undef,
+  moduser   => undef,
+);
+
+{
+  my sub rand_pw {
+    # Generates strings kinda like this one: b9l12-r5y9s-uc609-zey9q-61vjd
+    my @chars = (0..9, 'a' .. 'z');
+    my $pw = join q{-},
+      map {; join q{}, map {; $chars[ rand @chars ] } (1..5) }
+      (1..5);
+
+    return $pw;
+  }
+
+  for my $user (sort keys %db_password_for) {
+    $db_password_for{$user} = rand_pw();
+
+    run_cmd(
+      qw(mysql -e),
+      qq{CREATE USER $user IDENTIFIED BY '$db_password_for{$user}'},
+    );
+  }
+}
+
 run_cmd(
   qw(mysql -e),
-  q{CREATE USER pause IDENTIFIED BY 'pausepassword'},
+  q{GRANT DELETE, INDEX, INSERT, SELECT, UPDATE, LOCK TABLES ON `mod`.* TO 'moduser'@'%';},
 );
 
 run_cmd(
   qw(mysql -e),
-  q{GRANT DELETE, INDEX, INSERT, SELECT, UPDATE, LOCK TABLES ON `mod`.* TO 'pause'@'%';},
+  q{GRANT DELETE, INDEX, INSERT, SELECT, UPDATE, LOCK TABLES ON `authen_pause`.* TO 'authuser'@'%';},
 );
 
 run_cmd(
   qw(mysql -e),
-  q{GRANT DELETE, INDEX, INSERT, SELECT, UPDATE, LOCK TABLES ON `authen_pause`.* TO 'pause'@'%';},
+  q{GRANT BINLOG MONITOR, RELOAD ON *.* TO 'moduser'@'%';},
 );
 
 run_cmd(
   qw(mysql -e),
-  q{GRANT BINLOG MONITOR, RELOAD ON *.* TO 'pause'@'%';},
+  q{GRANT BINLOG MONITOR, RELOAD ON *.* TO 'authuser'@'%';},
 );
 
 my $nginx_config = <<~"END";
@@ -206,7 +232,12 @@ Path::Tiny::path("/etc/rsyncd.conf")->spew(<<~'END');
   path = /home/pause/pub/PAUSE/PAUSE-git
   END
 
-run_cmd(qw( sudo -u pause ), "/home/pause/pause/bootstrap/selfconfig");
+run_cmd(
+  qw( sudo -u pause ),
+  "/home/pause/pause/bootstrap/selfconfig",
+  "--authuser-pw", $db_password_for{authuser},
+  "--moduser-pw",  $db_password_for{moduser},
+);
 
 Path::Tiny::path("/home/pause/pause/cron/CRONTAB.ROOT")->copy("/etc/cron.d/pause");
 
