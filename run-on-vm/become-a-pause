@@ -102,6 +102,11 @@ run_cmd(
   q{GRANT DELETE, INDEX, INSERT, SELECT, UPDATE, LOCK TABLES ON `authen_pause`.* TO 'pause'@'%';},
 );
 
+run_cmd(
+  qw(mysql -e),
+  q{GRANT BINLOG MONITOR, RELOAD ON *.* TO 'pause'@'%';},
+);
+
 my $nginx_config = <<~"END";
 # Set up nginx conf
 upstream pause {
