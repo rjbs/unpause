@@ -190,6 +190,9 @@ unlink('/etc/nginx/sites-enabled/default');
 symlink("/etc/nginx/sites-available/$hostname", "/etc/nginx/sites-enabled/$hostname")
   or die "can't symlink nginx conf: $!";
 
+run_cmd(qw(ufw allow http)); # for Let's Encrypt and redirect to https.
+run_cmd(qw(ufw allow https));
+
 # Install ssl cert
 run_cmd(
   qw(sudo certbot --nginx -d),
