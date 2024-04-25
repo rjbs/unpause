@@ -83,7 +83,13 @@ async sub do_create {
     my ($droplet) = grep {; $_->{name} eq $boxname } @droplets;
 
     if ($droplet) {
-      die "box already exists\n";
+      my ($net) = grep {;
+        $_->{type} eq 'public'
+      } $droplet->{networks}{v4}->@*;
+
+      my $extra = $net ? " at root\@$net->{ip_address}" : "";
+
+      die "box already exists$extra\n";
     }
   }
 
