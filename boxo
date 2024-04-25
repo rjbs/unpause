@@ -212,6 +212,16 @@ async sub do_create {
       '--user', $username,
       '--pass', $username, # XXX: Do something better later.
   );
+
+  $Logger->log(<<~EOF);
+
+    Done! If all went well, pause should be at:
+
+      ssh root\@$ip_addr
+      ssh root\@$boxname.$domain
+
+      https://$boxname.$domain
+    EOF
 }
 
 async sub do_destroy {
