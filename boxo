@@ -19,6 +19,7 @@ my ($opt, $usage) = describe_options(
   [ 'box-ident|i=s',  "identifying part of box name; defaults to --username" ],
   [],
   [ 'plenv-file|P=s', "a tar.bz2 file to use for plenv (it's a shortcut)" ],
+  [ 'enable-mail|m',  "set up postfix config for outbound mail" ],
 
   [],
   [ 'mode', 'hidden' => {
@@ -197,8 +198,7 @@ async sub do_create {
         -o UserKnownHostsFile=/dev/null
         -o UpdateHostKeys=no
         -o StrictHostKeyChecking=no
-
-        run-on-vm/become-a-pause
+        run-on-vm/postfix
     ),
     "root\@$ip_addr:",
   );
@@ -217,6 +217,7 @@ async sub do_create {
       '--host', "$boxname.$domain",
       '--user', $username,
       '--pass', $username, # XXX: Do something better later.
+      ($opt->enable_mail ? ('--enable-mail') : ()),
   );
 
   $Logger->log(<<~EOF);

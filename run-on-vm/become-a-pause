@@ -72,6 +72,7 @@ my ($opt, $usage) = Getopt::Long::Descriptive::describe_options(
   [ "host=s", "the hostname being used for this install", { required => 1 } ],
   [ "user=s", "username for PAUSE admin to create",       { required => 1 } ],
   [ "pass=s", "password for PAUSE admin to create",       { required => 1 } ],
+  [ "enable-mail|m", "enable working postfix config",                       ],
 );
 
 my $hostname   = $opt->host;
@@ -240,6 +241,35 @@ run_cmd(
 );
 
 Path::Tiny::path("/home/pause/pause/cron/CRONTAB.ROOT")->copy("/etc/cron.d/pause");
+
+if ($opt->enable_mail) {
+  system(
+    q{echo "postfix postfix/main_mailer_type string 'Internet with smarthost'" | debconf-set-selections}
+  );
+
+  croak "failed to update debconf for main_mailer_type" if $?;
+
+  system(
+    qq{echo "postfix postfix/mailname string '$hostname'" | debconf-set-selections}
+  );
+
+  croak "failed to update debconf for mailname" if $?;
+
+  run_cmd(qw(apt-get -o DPkg::Lock::Timeout=60 install -y postfix));
+
+  my $cf = Path::Tiny::path("/home/pause/pause/etc/puppet/modules/pause/files/etc/postfix/main.cf-pause-us");
+
+  my $data = $cf->slurp_raw;
+  $data =~ s{daemon_directory = /usr/libexec/postfix}{daemon_directory = /usr/lib/postfix/sbin}
+    or warn "!!! Failed to replace daemon_directory !!!\n\n";
+  $data =~ s{inet_interfaces = all}{inet_interfaces = localhost}
+    or warn "!!! Failed to replace inet_interfaces !!!\n\n";
+
+  Path::Tiny::path("/etc/postfix/main.cf")->spew_raw($data);
+
+  run_cmd(qw( postfix stop ));
+  run_cmd(qw( postfix start ));
+}
 
 for my $service (qw( paused pause-web )) {
   Path::Tiny::path("/home/pause/pause/services/$service.service")
