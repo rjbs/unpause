@@ -166,19 +166,6 @@ async sub do_create {
 
   $Logger->log("ssh is now available to $boxname.$domain ($ip_addr)");
 
-  system(
-    qw(
-      /usr/bin/ssh
-        -o UserKnownHostsFile=/dev/null
-        -o UpdateHostKeys=no
-        -o StrictHostKeyChecking=no
-    ),
-
-    "root\@$ip_addr",
-
-    qw( /usr/bin/apt-get update ),
-  );
-
   if ($opt->plenv_file) {
     $Logger->log("Copying plenv install tarball to destination...");
 
