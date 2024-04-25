@@ -4,6 +4,9 @@ use warnings;
 
 use Carp qw(croak);
 
+# If we don't have a term debconf gets angry
+$ENV{TERM} //= 'xterm';
+
 # On DigitalOcean, the journal won't be journaling at startup.  Why?  Well, I
 # want to swear and say "because systemd!" but there seems to be an interesting
 # reason, related to the machine id being baked into the image and then not
